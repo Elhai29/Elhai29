@@ -1,0 +1,11 @@
+import time
+import webbrowser as wb
+import pyautogui as pg
+
+with open('https://web.whatsapp.com/)
+time.sleep(30)
+
+#set the number of messages in range.
+for i in range (100):
+  pg.typewrite("this is a automated message")  #when the web is open press on any chat you want and this is start by itself
+  pg.press("enter")
