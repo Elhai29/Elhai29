@@ -3,7 +3,7 @@ from telebot import *
 import pyjokes_hebrew
 keyboard1 = telebot.types.ReplyKeyboardMarkup()
 
-bot = telebot.TeleBot('5500249233:AAFIziZECWlqsQ-VZ-cAh4mb-JZ7A_yMwA8')
+bot = telebot.TeleBot('your-token')
 
 
 @bot.message_handler(commands=['start'])
