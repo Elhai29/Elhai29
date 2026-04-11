@@ -1,0 +1,96 @@
+import telebot
+from telebot import types
+import pyjokes_hebrew
+
+bot = telebot.TeleBot(8704288805:AAGS7ZWSxZbZIZlgfATc_G3VZo2LxXuw-cM)
+
+# --- הגדרות שאלות (ניתן להוסיף/להסיר בקלות) ---
+SALARY_QUESTIONS = [
+    {"key": "hours", "text": "כמה שעות עבדת החודש?"},
+    {"key": "rate", "text": "מה השכר השעתי שלך?"},
+    {"key": "travel", "text": "מה סך דמי הנסיעות (ברוטו)?"},
+    {"key": "credit_points", "text": "כמה נקודות זיכוי יש לך? (למשל: 2.25)"}
+]
+
+user_responses = {}
+
+@bot.message_handler(commands=['salary'])
+def start_salary_calc(message):
+    user_responses[message.chat.id] = {}
+    ask_question(message, 0)
+
+def ask_question(message, question_index):
+    if question_index < len(SALARY_QUESTIONS):
+        question = SALARY_QUESTIONS[question_index]
+        msg = bot.send_message(message.chat.id, question["text"])
+        bot.register_next_step_handler(msg, process_answer, question_index)
+    else:
+        calculate_final_salary(message)
+
+def process_answer(message, question_index):
+    chat_id = message.chat.id
+    try:
+        val = float(message.text)
+        key = SALARY_QUESTIONS[question_index]["key"]
+        user_responses[chat_id][key] = val
+        ask_question(message, question_index + 1)
+    except ValueError:
+        bot.send_message(chat_id, "נא להזין מספר בלבד (למשל: 50.5).")
+        ask_question(message, question_index)
+
+def calculate_final_salary(message):
+    chat_id = message.chat.id
+    data = user_responses[chat_id]
+    
+    # נתונים מהמשתמש
+    hours = data.get('hours', 0)
+    rate = data.get('rate', 0)
+    travel = data.get('travel', 0)
+    points = data.get('credit_points', 2.25)
+    
+    # חישוב ברוטו
+    gross_salary = (hours * rate) + travel
+    
+    # חישוב מס הכנסה משוער (לפי מדרגת מס ראשונה של 10% - לפישט הפרויקט)
+    # זיכוי מס: כל נקודת זיכוי שווה כ-242 ש"ח (נכון ל-2024/25)
+    tax_before_credit = gross_salary * 0.10 
+    tax_credit = points * 242
+    income_tax = max(0, tax_before_credit - tax_credit)
+    
+    # ביטוח לאומי ומס בריאות (משוער כ-3.5% על השכר הנמוך)
+    national_insurance = gross_salary * 0.035
+    
+    net_salary = gross_salary - income_tax - national_insurance
+    
+    result_text = (
+        f"📊 **פירוט שכר משוער:**\n"
+        f"━━━━━━━━━━━━\n"
+        f"💰 **ברוטו:** {gross_salary:,.2f} ₪\n"
+        f"📉 מס הכנסה: {income_tax:,.2f} ₪\n"
+        f"📉 ביטוח לאומי: {national_insurance:,.2f} ₪\n"
+        f"━━━━━━━━━━━━\n"
+        f"💵 **נטו בנק:** {net_salary:,.2f} ₪\n"
+        f"━━━━━━━━━━━━\n"
+        f"*מבוסס על 10% מס ונקודות זיכוי.*"
+    )
+    
+    bot.send_message(chat_id, result_text, parse_mode='Markdown')
+    del user_responses[chat_id]
+
+# --- שאר הפקודות שלך ---
+
+@bot.message_handler(commands=['help'])
+def help_command(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add('/start', '/website', '/salary')
+    bot.send_message(message.chat.id, 'בחר פעולה מהתפריט:', reply_markup=markup)
+
+@bot.message_handler(content_types=['text'])
+def get_user_text(message):
+    text = message.text.lower()
+    if 'joke' in text:
+        bot.send_message(message.chat.id, pyjokes_hebrew.get_random_joke())
+    elif 'id' in text:
+        bot.send_message(message.chat.id, f"ה-ID שלך: {message.from_user.id}")
+
+bot.polling(none_stop=True)
